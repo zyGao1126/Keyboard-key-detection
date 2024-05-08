@@ -1,12 +1,15 @@
 import cv2
 import numpy as np
 import argparse
+import time
 from finger_detect.finger_calibration import real_finger_calib, manage_image_opr, coor_key_transform
 from kb_detect.img_calibration import ref_keyboard_calib
 from kb_detect.vdo_calibration import real_keyboard_calib
 
 def real_test(opt):
     capture = cv2.VideoCapture(1)
+    last_time = time.time()  
+
     while capture.isOpened():
         pressed_key = cv2.waitKey(1)
         _, frame = capture.read()
@@ -14,8 +17,10 @@ def real_test(opt):
         
         hand_hist = np.load(opt.finger_hist_path)
         coor = manage_image_opr(frame, hand_hist)
-        if coor:
+        current_time = time.time()
+        if coor and current_time - last_time >= 1:
             coor_key_transform(opt, coor)
+            last_time = current_time
         cv2.imshow("Keyboard operator detection", frame)
 
         if pressed_key == 27: #ESC

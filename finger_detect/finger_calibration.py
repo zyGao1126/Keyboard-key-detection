@@ -40,8 +40,8 @@ def draw_rect(frame):
     global total_rectangle, hand_rect_one_x, hand_rect_one_y, hand_rect_two_x, hand_rect_two_y
 
     hand_rect_one_x = np.array(
-        [6 * rows / 20, 6 * rows / 20, 6 * rows / 20, 9 * rows / 20, 9 * rows / 20, 9 * rows / 20, 12 * rows / 20,
-         12 * rows / 20, 12 * rows / 20], dtype=np.uint32)
+        [7 * rows / 20, 7 * rows / 20, 7 * rows / 20, 9 * rows / 20, 9 * rows / 20, 9 * rows / 20, 11 * rows / 20,
+         11 * rows / 20, 11 * rows / 20], dtype=np.uint32)
     hand_rect_one_y = np.array(
         [9 * cols / 20, 10 * cols / 20, 11 * cols / 20, 9 * cols / 20, 10 * cols / 20, 11 * cols / 20, 9 * cols / 20,
          10 * cols / 20, 11 * cols / 20], dtype=np.uint32)
@@ -72,8 +72,7 @@ def farthest_point(defects, contour, centroid):
             farthest_defect = s[dist_max_i]
             farthest_point = tuple(contour[farthest_defect][0])
             return farthest_point, np.max(dist)
-        else:
-            return None, None
+    return None, None
 
 def hist_masking(frame, hist):
     hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
@@ -117,7 +116,7 @@ def manage_image_opr(frame, hand_hist):
     hist_mask_image = cv2.dilate(hist_mask_image, None, iterations=2)
 
     contour_list = contours(hist_mask_image)
-    if len(contour_list) < 5:
+    if len(contour_list) < 1:
         return None
     max_cont = max(contour_list, key=cv2.contourArea)
 
@@ -154,13 +153,13 @@ def coor_key_transform(opt, keypoint):
         scale_y = (y2_ref - y1_ref) / (y2_frame - y1_frame)
         x_transformed = (keypoint[0] - x1_frame) * scale_x + x1_ref
         y_transformed = (keypoint[1] - y1_frame) * scale_y + y1_ref
-        
+        print("scale_x: {}  scale_y: {}  x_transformed: {}  y_transformed: {}".format(scale_x, scale_y, x_transformed, y_transformed))
         for key, value in ref_keyboard.items():
             if key == "keyboard":
                 continue
             (x1, y1, x2, y2) = eval(value)
             if x_transformed > x1 and y_transformed > y1:
-                if y_transformed < x2 and y_transformed < y2:
+                if x_transformed < x2 and y_transformed < y2:
                     print("***** Press {} *****".format(key))
                     break        
 
