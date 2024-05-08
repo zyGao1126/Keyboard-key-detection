@@ -27,3 +27,6 @@ After finishing the above registation, we can begin our test. just execute:
 `python main.py`
 
 Note that, If the environment change (such as the keyboard being moved), please re-execuate step2-keyboard registation to update the keyboard location.
+
+## **Acknowledgement**
+This code is based on [KeyboardDetection](https://github.com/FlipGoncalves/KeyboardDetection) and [Finger-Detection-and-Tracking](https://github.com/amarlearning/Finger-Detection-and-Tracking).
