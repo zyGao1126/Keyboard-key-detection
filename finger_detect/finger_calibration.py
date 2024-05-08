@@ -5,8 +5,12 @@ import json
 import numpy as np
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from kb_detect.img_calibration import get_binary_image, key_json_path
-from kb_detect.vdo_calibration import vdo_json_path, extract_keyboard
+from kb_detect.img_calibration import get_binary_image
+from kb_detect.vdo_calibration import extract_keyboard
+
+# tmp
+key_json_path = ""
+vdo_json_path = ""
 
 total_rectangle = 9
 traverse_point = []
@@ -131,23 +135,27 @@ def manage_image_opr(frame, hand_hist):
     cv2.circle(frame, calib_point, 5, WHITE, -1)    
     return calib_point
 
-def coor_key_transform(frame, keypoint):
-    processed_image = get_binary_image(vdo_json_path, frame)
-    (x1_frame, y1_frame), (x2_frame, y2_frame) = extract_keyboard(frame, processed_image)
+def coor_key_transform(opt, keypoint):
+    real_key_json_path = opt.real_key_json_path
+    ref_key_json_path = opt.ref_key_json_path
     
+    with open(real_key_json_path) as f:
+        real_keyboard = json.load(f)
+    (x1_frame, y1_frame, x2_frame, y2_frame) = eval(real_keyboard["boundary"])    
+
     if keypoint[0] < x1_frame or keypoint[0] > x2_frame or keypoint[1] < y1_frame or keypoint[1] > y2_frame:
         print("The detection point is not in keyboard.")
     else:
-        with open(key_json_path) as f:
-            keyboard = (json.load(f))
-        (x1_ref, y1_ref, x2_ref, y2_ref) = eval(keyboard["keyboard"])
+        with open(ref_key_json_path) as f:
+            ref_keyboard = (json.load(f))
+        (x1_ref, y1_ref, x2_ref, y2_ref) = eval(ref_keyboard["keyboard"])
         
         scale_x = (x2_ref - x1_ref) / (x2_frame - x1_frame)
         scale_y = (y2_ref - y1_ref) / (y2_frame - y1_frame)
         x_transformed = (keypoint[0] - x1_frame) * scale_x + x1_ref
         y_transformed = (keypoint[1] - y1_frame) * scale_y + y1_ref
         
-        for key, value in keyboard.items():
+        for key, value in ref_keyboard.items():
             if key == "keyboard":
                 continue
             (x1, y1, x2, y2) = eval(value)
@@ -156,5 +164,25 @@ def coor_key_transform(frame, keypoint):
                     print("***** Press {} *****".format(key))
                     break        
 
+def real_finger_calib(opt):
+    capture = cv2.VideoCapture(1)
+    while capture.isOpened():
+        pressed_key = cv2.waitKey(1)
+        _, frame = capture.read()
+        frame = cv2.flip(frame, 1)
+        
+        if pressed_key & 0xFF == ord('z'):
+            print("** Start finger histogram registeration ***")
+            hand_hist = hand_histogram(frame)
+            np.save(opt.finger_hist_path, hand_hist)
+            break
+        else:
+            frame = draw_rect(frame)
+        
+        cv2.imshow("Finger histogram registeration", frame)
+        if pressed_key == 27: #ESC
+            break    
+    cv2.destroyAllWindows()
+    capture.release()      
 
 

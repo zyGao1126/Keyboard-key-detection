@@ -10,14 +10,12 @@ from functools import partial
 import copy
 import json
 from colorama import Fore, Back, Style
+import argparse
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from kb_detect.util import *
 
 GREEN = (0,255,0)
-img_json_path = './json_file/limits_ref.json'
-key_json_path = './json_file/keyboard_ref.json'
-
 
 def processImage(ranges, image):
 
@@ -105,7 +103,7 @@ def get_key_centroid(image, th_area, visual=True):
         objects.append(label)        
 
     if visual:
-        cv2.imshow('centroid image', image)
+        cv2.imshow('Centroid image', image)
         cv2.waitKey(0)
         cv2.destroyAllWindows()
 
@@ -119,13 +117,17 @@ def anno_key_location(event, x, y, flags, param, keyboard):
         if letter:
             keyboard[letter] = (x,y)    
     
-def write_key_2_json(kb_file, keyboard):
-    global real_keyboard
+def write_key_2_json(kb_file, keyboard, centroids):
+    real_keyboard = {}
+    # pre-write the whole keyboard boundary
+    real_keyboard["keyboard"] = [int(centroids[0][2][0][0]), int(centroids[0][2][0][1]), int(centroids[0][2][1][0]), int(centroids[0][2][1][1])]
+    del centroids[0]
     for key, value in keyboard.items():
         (x,y) = value
         for label in centroids:
             if x > label[2][0][0] and y > label[2][0][1]:
                 if x < label[2][1][0] and y < label[2][1][1]:
+                    # double check
                     real_keyboard[key] = [int(label[2][0][0]), int(label[2][0][1]), int(label[2][1][0]), int(label[2][1][1])]
 
     formatted_keyboard = {key: f"({value[0]}, {value[1]}, {value[2]}, {value[3]})" for key, value in real_keyboard.items()}
@@ -140,38 +142,20 @@ def mouse_handler_test(event, x, y, flags, params, keyboard):
                 if x < x1 and y < y1:
                     print("the key is: ", key)
 
-if __name__ == '__main__':
-    img_path = './iniImage/keyboard_ref.jpg'
-    visual = True  
-    need_annotate = False  
+def key_annotation(image, image_processed, key_json_path, centroids):
     keyboard = {}
+    cv2.namedWindow("key annotation", cv2.WINDOW_NORMAL)
+    cv2.resizeWindow('ImageWindow', image.shape[0], image.shape[1])        
+    cv2.setMouseCallback("key annotation", partial(anno_key_location, keyboard=keyboard)) 
+    while True:
+        cv2.imshow('key annotation', image_processed)
+        if cv2.waitKey(1) & 0xFF == ord('q'):
+            break
+    write_key_2_json(key_json_path, keyboard, centroids)
+    cv2.destroyAllWindows()  
+
+def test_key_annotation(image_processed, key_json_path):
     real_keyboard = {}
-
-    # step 1: get color range according to the mode
-    get_RGB_range(img_path, img_json_path)
-
-    image = cv2.imread(img_path)
-    
-    # step 2: use color range to get binary image
-    image_processed = get_binary_image(img_json_path, image)
-
-    # step 3: get keys' centroid
-    th_area = 180
-    centroids = get_key_centroid(image_processed, th_area, visual)
-
-    # step 4: annotate keyboard location to json 
-    if need_annotate:
-        cv2.namedWindow("key annotation", cv2.WINDOW_NORMAL)
-        cv2.resizeWindow('ImageWindow', image.shape[0], image.shape[1])        
-        cv2.setMouseCallback("key annotation", partial(anno_key_location, keyboard=keyboard)) 
-        while True:
-            cv2.imshow('key annotation', image_processed)
-            if cv2.waitKey(1) & 0xFF == ord('q'):
-                break
-        write_key_2_json(key_json_path, keyboard)
-        cv2.destroyAllWindows()
-    
-    # step 5: verify the accuracy of keyboard.json 
     with open(key_json_path) as f:
         real_keyboard = json.load(f)
     cv2.namedWindow("annotation test")    
@@ -180,7 +164,43 @@ if __name__ == '__main__':
         cv2.imshow('annotation test', image_processed)
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
-    cv2.destroyAllWindows()
+    cv2.destroyAllWindows()   
+
+def ref_keyboard_calib(opt):
+    img_json_path = './json_file/limits_ref.json'
+    key_json_path = opt.ref_key_json_path
+    img_path = opt.ref_img_path
+    threshold_area = opt.key_area
+    
+    # step1: get color range according to the mode
+    get_RGB_range(img_path, img_json_path)
+    # step2: use color range to get binary image
+    image = cv2.imread(img_path)
+    image_processed = get_binary_image(img_json_path, image)
+    # step3: get each key's centroid and boundary
+    centroids = get_key_centroid(image_processed, threshold_area)
+    # step4: annotate keyboard key boundary to .json
+    key_annotation(image, image_processed, key_json_path, centroids)
+    # step5: test annotation
+    test_key_annotation(image_processed, key_json_path)
+
+if __name__ == '__main__':
+    img_path = './iniImage/keyboard_ref.jpg'
+    img_json_path = './json_file/limits_ref.json'
+    key_json_path = './json_file/keyboard_ref.json'
+    visual = True  
+    need_annotate = False  
+    keyboard = {}
+    real_keyboard = {}
+    threshold_area = 180
+
+    get_RGB_range(img_path, img_json_path)
+    image = cv2.imread(img_path)
+    image_processed = get_binary_image(img_json_path, image)    
+    centroids = get_key_centroid(image_processed, threshold_area, visual)
+    if need_annotate:
+        key_annotation(image, image_processed, key_json_path)
+    test_key_annotation(image_processed, key_json_path)
     
 
 
