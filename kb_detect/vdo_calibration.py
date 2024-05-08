@@ -64,6 +64,7 @@ def real_keyboard_calib(opt):
             formatted_keyboard = {"boundary": f"({x1}, {y1}, {x2}, {y2})"}
             with open(opt.real_key_json_path, 'w') as file_handle:
                 json.dump(formatted_keyboard, file_handle)
+            print('writing current keyboard location to file ' + opt.real_key_json_path)
             break                    
 
         if k == 27:

@@ -49,7 +49,7 @@ def get_RGB_range(rootPath, json_path):
     cv2.namedWindow(window_name_cal, cv2.WINDOW_AUTOSIZE)
     cv2.namedWindow(window_name_or, cv2.WINDOW_AUTOSIZE)    
 
-    ranges = {'B': {'max': 255, 'min': 160},
+    ranges = {'B': {'max': 255, 'min': 220},
               'G': {'max': 255, 'min': 0},
               'R': {'max': 255, 'min': 0}}
 
@@ -103,7 +103,9 @@ def get_key_centroid(image, th_area, visual=True):
         objects.append(label)        
 
     if visual:
-        cv2.imshow('Centroid image', image)
+        cv2.namedWindow("Centroid image", cv2.WINDOW_NORMAL)
+        cv2.resizeWindow('Centroid image', image.shape[1], image.shape[0])  
+        cv2.imshow('Centroid image', image)           
         cv2.waitKey(0)
         cv2.destroyAllWindows()
 
@@ -136,22 +138,33 @@ def write_key_2_json(kb_file, keyboard, centroids):
 
 def mouse_handler_test(event, x, y, flags, params, keyboard):
     if event == cv2.EVENT_LBUTTONDOWN:
-        for key, label in keyboard.items():
+        flag1 = flag2 =False
+        for key, label in keyboard.items():            
             (x0, y0, x1, y1) = eval(label)
             if x > x0 and y > y0:
                 if x < x1 and y < y1:
-                    print("the key is: ", key)
+                    if key == 'keyboard':
+                        flag1 = True
+                        print("Point in keyboard, ", end="")
+                    else:
+                        flag2 = True
+                        print("the key is: ", key)
+        if not flag1 and not flag2:
+            print("Point is not in keyboard.")
+        elif flag1 and not flag2:
+            print("but not belong to any key.")
 
 def key_annotation(image, image_processed, key_json_path, centroids):
     keyboard = {}
     cv2.namedWindow("key annotation", cv2.WINDOW_NORMAL)
-    cv2.resizeWindow('ImageWindow', image.shape[0], image.shape[1])        
+    cv2.resizeWindow('key annotation', image.shape[1], image.shape[0])        
     cv2.setMouseCallback("key annotation", partial(anno_key_location, keyboard=keyboard)) 
     while True:
         cv2.imshow('key annotation', image_processed)
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
-    write_key_2_json(key_json_path, keyboard, centroids)
+    if len(keyboard):
+        write_key_2_json(key_json_path, keyboard, centroids)
     cv2.destroyAllWindows()  
 
 def test_key_annotation(image_processed, key_json_path):

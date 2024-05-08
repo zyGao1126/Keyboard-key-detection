@@ -10,7 +10,7 @@ def real_test(opt):
     while capture.isOpened():
         pressed_key = cv2.waitKey(1)
         _, frame = capture.read()
-        frame = cv2.flip(frame, 1)
+        # frame = cv2.flip(frame, 1)
         
         hand_hist = np.load(opt.finger_hist_path)
         coor = manage_image_opr(frame, hand_hist)

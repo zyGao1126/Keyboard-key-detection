@@ -172,7 +172,7 @@ def real_finger_calib(opt):
         frame = cv2.flip(frame, 1)
         
         if pressed_key & 0xFF == ord('z'):
-            print("** Start finger histogram registeration ***")
+            print("** Finish finger histogram registeration ***")
             hand_hist = hand_histogram(frame)
             np.save(opt.finger_hist_path, hand_hist)
             break
