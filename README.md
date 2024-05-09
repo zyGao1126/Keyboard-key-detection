@@ -7,24 +7,25 @@ Firstly, we need to prepare a reference keybaord image and extract the boundary 
 
 Execute:
 
-`python kb_dect/img_calibration.py`
+`python main.py -mode=refKeyCalib`
 
 ### **Step2: Actual environment registation**
 Before actual test, we need to calibrate finger and keyboard based on the current scene and save parameters in .json files respectively.
 
 #### Finger registation
-Update finger's color space.
+Calibrate finger's color space.
+
+`python main.py -mode=realFingCalib`
 
 #### Keyboard registation
-Update keyboard's color space and boundary location.
+Calibrate keyboard's color space and boundary location.
 
-`python kb_dect/vdo_calibration.py`
-
+`python main.py -mode=realKeyCalib`
 
 ### **Step3: Actual environment testing**  
-After finishing the above registation, we can begin our test. just execute:
+After finishing the above calibration, we can begin our test. just execute:
 
-`python main.py`
+`python main.py -mode=realTest`
 
 Note that, If the environment change (such as the keyboard being moved), please re-execuate step2-keyboard registation to update the keyboard location.
 
