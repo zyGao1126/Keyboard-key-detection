@@ -9,6 +9,11 @@ Execute:
 
 `python main.py -mode=refKeyCalib`
 
+<p align="center">
+<img src="https://github.com/zyGao1126/Keyboard-key-detection/blob/master/sample/sample1.png" height="300px" style="margin-right: 10px;">
+<img src="https://github.com/zyGao1126/Keyboard-key-detection/blob/master/sample/sample2.png" height="300px">
+</p>
+
 ### **Step2: Actual environment registation**
 Before actual test, we need to calibrate finger and keyboard based on the current scene and save parameters in .json files respectively.
 
@@ -27,6 +32,10 @@ After finishing the above calibration, we can begin our test. just execute:
 
 `python main.py -mode=realTest`
 
+Here is a simple demo:
+<p align="center">
+  <img src="https://github.com/zyGao1126/Keyboard-key-detection/blob/master/sample/sample_demo.gif" alt="demo" width="40%">
+</p>
 Note that, If the environment change (such as the keyboard being moved), please re-execuate step2-keyboard registation to update the keyboard location.
 
 ## **Acknowledgement**
