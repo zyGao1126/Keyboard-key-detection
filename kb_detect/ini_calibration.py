@@ -34,6 +34,7 @@ def processImage(ranges, image):
 
     # get binary image with threshold the values not in the mask
     _, image_processed = cv2.threshold(image_processed, 1, 255, cv2.THRESH_BINARY)
+    # image_processed = cv2.bitwise_not(image_processed)
 
     return image_processed
 
@@ -49,7 +50,7 @@ def get_RGB_range(rootPath, json_path):
     cv2.namedWindow(window_name_cal, cv2.WINDOW_AUTOSIZE)
     cv2.namedWindow(window_name_or, cv2.WINDOW_AUTOSIZE)    
 
-    ranges = {'B': {'max': 255, 'min': 220},
+    ranges = {'B': {'max': 255, 'min': 50},
               'G': {'max': 255, 'min': 0},
               'R': {'max': 255, 'min': 0}}
 
@@ -96,7 +97,8 @@ def get_key_centroid(image, th_area, visual=True):
     objects = []
     for idx, label in enumerate(max_labels):
         # adjust based on the generated centroid 
-        if label[0] != 0 and (label[0] <= 1 or label[1] < th_area or idx <= 2):
+        # if label[0] != 0 and (label[0] <= 1 or label[1] < th_area or idx <= 2):
+        if label[0] == 1 or label[1] < th_area:
             continue 
         # draw the bounding rectangele around each object
         cv2.rectangle(image, label[2][0], label[2][1], GREEN, 2)
