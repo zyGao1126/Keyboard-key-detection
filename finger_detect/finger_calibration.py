@@ -97,9 +97,11 @@ def bias_calibration(far_point, cnt_centroid, far_dist, bias=15):
     dy = far_point[1] - cnt_centroid[1]
     
     bias_x = np.floor(bias * dx / far_dist) if dx > 0 else np.ceil(bias * dx / far_dist)
-    bias_y = np.floor(bias * dy/ far_dist ) if dy > 0 else np.ceil(bias * dy / far_dist) 
-
-    return tuple((np.uint32(far_point[0] - bias_x), np.uint32(far_point[1] - bias_y)))
+    bias_y = np.floor(bias * dy / far_dist) if dy > 0 else np.ceil(bias * dy / far_dist) 
+    if far_point[0] > bias_x and far_point[1] > bias_y:
+        return tuple((np.uint32(far_point[0] - bias_x), np.uint32(far_point[1] - bias_y)))
+    else: 
+        return None
 
 def manage_image_opr(frame, hand_hist, bias):
     hist_mask_image = hist_masking(frame, hand_hist)
@@ -124,7 +126,8 @@ def manage_image_opr(frame, hand_hist, bias):
     calib_point = bias_calibration(far_point, cnt_centroid, far_dist, bias)
     # print("Centroid : " + str(cnt_centroid) + ", farthest Point : " + str(far_point) + "calib point : " + str(calib_point))
     cv2.circle(frame, far_point, 5, RED, -1)
-    cv2.circle(frame, calib_point, 5, WHITE, -1)    
+    if calib_point is not None:
+        cv2.circle(frame, calib_point, 5, WHITE, -1)    
     return calib_point
 
 
@@ -181,6 +184,7 @@ def coor_key_transform(keyboard_json, keypoint, matrix):
 #                 if x_transformed < x2 and y_transformed < y2:
 #                     print("***** Press {} *****".format(key))
 #                     break        
+
 
 def real_finger_calib(config):
     capture = cv2.VideoCapture(1)

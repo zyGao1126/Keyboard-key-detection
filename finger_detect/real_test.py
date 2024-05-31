@@ -1,4 +1,5 @@
 import numpy as np
+from collections import deque
 import cv2
 import json
 import sys
@@ -9,6 +10,28 @@ from kb_detect.ini_calibration import processImage
 from kb_detect.real_calibration import get_contour
 from finger_detect.finger_calibration import manage_image_opr, coor_key_transform
 
+class myQueue():
+    def __init__(self):
+        self.queue = deque()
+        self.ref_area = None
+        self.last_area = None
+        self.ref_matrix = None
+        self.last_matrix = None
+        self.count = 0
+
+    def enqueue(self, item):
+        self.queue.append(item)
+
+    def dequeue(self):
+        if self.size() > 0:
+            return self.queue.popleft()
+        else:
+            return None
+    
+    def size(self):
+        return len(self.queue)
+
+fifo = myQueue()
 
 def matrixChange(config, last_matrix, matrix):
     if last_matrix is None:
@@ -20,6 +43,9 @@ def matrixChange(config, last_matrix, matrix):
     if diff_sita >= config['sita_threshold'] or diff_x >= config['coor_threshold'] or diff_y >= config['coor_threshold']:
         return True
     return False
+
+def isLegalKeyboard(area):
+    return True if (area > 80000 and area < 120000) else False
 
 def real_test(config):
     config_refKey = config['refKeyCalib']
@@ -44,7 +70,7 @@ def real_test(config):
         if area is not None:
             if ref_area is None:
                 if count < 5:
-                    count = count + 1 if not matrixChange(config_test, last_matrix, matrix) else 0
+                    count = count + 1 if (not matrixChange(config_test, last_matrix, matrix) and isLegalKeyboard(area)) else 0
                 else:
                     ref_area = last_area 
                     ref_matrix = last_matrix
@@ -67,3 +93,44 @@ def real_test(config):
             break 
     cv2.destroyAllWindows()
     capture.release()
+
+
+def test_single_img(fifo, config_refKey, config_finger, config_realKey, config_test, frame):
+    with open("./json_file/limit_real.json") as f:
+        ranges = (json.load(f))["limits"]        
+    binary_image = cv2.cvtColor(processImage(ranges, frame), cv2.COLOR_BGR2GRAY)  
+    _, _, matrix, area = get_contour(config_realKey, binary_image, frame, config_refKey['ref_key_json_path'])
+    if area is not None:
+        if fifo.ref_area is None:
+            if fifo.count < 5:
+                fifo.count = fifo.count + 1 if (not matrixChange(config_test, fifo.last_matrix, matrix) and isLegalKeyboard(area)) else 0
+            else:
+                fifo.ref_area = fifo.last_area 
+                fifo.ref_matrix = fifo.last_matrix
+            fifo.last_area = area
+            fifo.last_matrix = matrix 
+        else:
+            area_th = fifo.ref_area * 0.05
+            if abs(area - fifo.ref_area) < area_th and matrixChange(config_test, fifo.ref_matrix, matrix):
+                fifo.ref_area = fifo.ref_matrix = None
+                fifo.last_area = area
+                fifo.last_matrix = matrix 
+                fifo.count = 0
+    hand_hist = np.load(config_finger['finger_hist_path'])
+    coor = manage_image_opr(frame, hand_hist, config_test['coor_bias'])
+    if coor and fifo.ref_matrix is not None:
+        coor_key_transform(config_refKey['ref_key_json_path'], coor, fifo.ref_matrix) 
+
+
+def real_test_img(config, image_list):
+    config_refKey = config['refKeyCalib']
+    config_finger = config['realFingerCalib']
+    config_realKey = config['realKeyCalib']
+    config_test = config['realTest']
+       
+    for frame in image_list:
+        test_single_img(fifo, config_refKey, config_finger, config_realKey, config_test, frame)
+ 
+
+
+    
