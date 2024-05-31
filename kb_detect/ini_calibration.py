@@ -181,11 +181,11 @@ def test_key_annotation(image_processed, key_json_path):
             break
     cv2.destroyAllWindows()   
 
-def ref_keyboard_calib(opt):
+def ref_keyboard_calib(config):
     img_json_path = './json_file/limits_ref.json'
-    key_json_path = opt.ref_key_json_path
-    img_path = opt.ref_img_path
-    threshold_area = opt.key_area
+    key_json_path = config['ref_key_json_path']
+    img_path = config['ref_img_path']
+    threshold_area = config['th_key_area']
     
     # step1: get color range according to the mode
     get_RGB_range(img_path, img_json_path)

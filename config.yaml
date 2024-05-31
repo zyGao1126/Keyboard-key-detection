@@ -1,0 +1,19 @@
+
+refKeyCalib:
+  ref_key_json_path: "./json_file/keyboard1_ref.json"
+  ref_img_path: "./iniImage/keyboard1_ref.jpg"
+  th_key_area: 180
+
+realFingerCalib:
+  finger_hist_path: "./finger_detect/hand_hist.npy"
+
+realKeyCalib:
+  erode_kernel: 3
+  canny_threshold: [50, 150]
+  epsilon: 0.02
+  contour_area: [5000, 120000]
+  
+realTest:
+  sita_threshold: 2
+  coor_threshold: 10
+  coor_bias: 15

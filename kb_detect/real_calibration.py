@@ -16,33 +16,36 @@ from kb_detect.ini_calibration import onTrackbar, processImage
 
 GREEN = (0,255,0)
 
-def get_vertex(image):
+def get_vertex(image, eps, area_threshold):
     contours, _ = cv2.findContours(image, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
     contours = sorted(contours, key=cv2.contourArea, reverse=True)
     for idx, contour in enumerate(contours):
-        epsilon = 0.02 * cv2.arcLength(contour, True) 
+        epsilon = eps * cv2.arcLength(contour, True) 
         approx = cv2.approxPolyDP(contour, epsilon, True)
         if idx > 5:
             return None, None
-        elif cv2.contourArea(contour) < 5000 or cv2.contourArea(contour) > 120000:
+        elif cv2.contourArea(contour) < area_threshold[0] or cv2.contourArea(contour) > area_threshold[1]:
             continue   
         if len(approx) == 4:
-            print(cv2.contourArea(contour))
             return approx.reshape(4, 2), cv2.contourArea(contour)
 
     return None, None
 
 
-def image_transform(edge_image, image):
-    corners, area = get_vertex(edge_image)    
+def image_transform(edge_image, image, eps, area_threshold, keybaord_json):
+    corners, area = get_vertex(edge_image, eps, area_threshold)    
     if corners is not None:
         cv2.polylines(image, [corners], isClosed=True, color=GREEN, thickness=2)        
         
-        h, w = 150, 300
         s = corners.sum(axis = 1)
         diff = np.diff(corners, axis=1)
         rect = np.array([corners[np.argmin(s)], corners[np.argmin(diff)], corners[np.argmax(s)], corners[np.argmax(diff)]], dtype="float32")
-        pts_dst = np.array([[0, 0], [w - 1, 0], [w- 1, h - 1], [0, h - 1]], dtype='float32')
+        
+        with open(keybaord_json) as f:
+            vertexs = eval((json.load(f))["keyboard"])
+        w = vertexs[2] - vertexs[0]
+        h = vertexs[3] - vertexs[1]
+        pts_dst = np.array([[0, 0], [w - 1, 0], [w - 1, h - 1], [0, h - 1]], dtype='float32')
 
         matrix = cv2.getPerspectiveTransform(rect, pts_dst)
         warped_image = cv2.warpPerspective(image, matrix, (w, h))
@@ -50,31 +53,30 @@ def image_transform(edge_image, image):
     return None, None, None
 
 
-def edge_detect(image):
+def edge_detect(image, threshold):
     blurred = cv2.GaussianBlur(image, (5, 5), 0)
-    edged = cv2.Canny(blurred, 50, 150)
+    edged = cv2.Canny(blurred, threshold[0], threshold[1])
     return edged
 
 
-def get_contour(binary_image, image):
+def get_contour(config, binary_image, image, keybaord_json):
     gray_ori_image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-    enh_image = cv2.bitwise_not(morpholo_process(binary_image))    
+    enh_image = morpholo_process(cv2.bitwise_not(binary_image), config['erode_kernel'])    
     # enh_image = cv2.bitwise_not(binary_image)
     
-    edge_image = edge_detect(gray_ori_image)
+    edge_image = edge_detect(gray_ori_image, config['canny_threshold'])
     diff_image = edge_image - enh_image
-    warped_image, matrix, area = image_transform(diff_image, image)
+    warped_image, matrix, area = image_transform(diff_image, image, config['epsilon'], config['contour_area'], keybaord_json)
     return diff_image, warped_image, matrix, area
 
 
-def morpholo_process(image):
-    kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (1, 5))
-    # opened = cv2.morphologyEx(image, cv2.MORPH_OPEN, kernel)
-    closed = cv2.morphologyEx(image, cv2.MORPH_CLOSE, kernel)
-    return closed
+def morpholo_process(image, kernel):
+    erode_kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (kernel, kernel))
+    eroded_image = cv2.erode(image, erode_kernel, iterations=1)
+    return eroded_image
 
 
-def real_keyboard_calib(opt):    
+def real_keyboard_calib(config, keybaord_json):    
     ori_img_window = 'original_img'
     binary_img_window = 'binary_img'
     calibrate_img_window = 'calibrate_img'
@@ -102,7 +104,7 @@ def real_keyboard_calib(opt):
         # image = cv2.flip(image, 1)
 
         binary_image = cv2.cvtColor(processImage(ranges, image), cv2.COLOR_BGR2GRAY)  
-        edge_image, warped_image, _, _ = get_contour(binary_image, image)
+        edge_image, warped_image, _, _ = get_contour(config, binary_image, image, keybaord_json)
 
         cv2.imshow(ori_img_window, image)
         cv2.imshow(binary_img_window, binary_image)      

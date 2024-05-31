@@ -101,7 +101,7 @@ def bias_calibration(far_point, cnt_centroid, far_dist, bias=15):
 
     return tuple((np.uint32(far_point[0] - bias_x), np.uint32(far_point[1] - bias_y)))
 
-def manage_image_opr(frame, hand_hist):
+def manage_image_opr(frame, hand_hist, bias):
     hist_mask_image = hist_masking(frame, hand_hist)
     # cv2.imshow("hist_mask_image", rescale_frame(hist_mask_image))
 
@@ -121,30 +121,27 @@ def manage_image_opr(frame, hand_hist):
     far_point, far_dist = farthest_point(defects, max_cont, cnt_centroid)
     if far_dist == None:
         return None
-    calib_point = bias_calibration(far_point, cnt_centroid, far_dist)
+    calib_point = bias_calibration(far_point, cnt_centroid, far_dist, bias)
     # print("Centroid : " + str(cnt_centroid) + ", farthest Point : " + str(far_point) + "calib point : " + str(calib_point))
     cv2.circle(frame, far_point, 5, RED, -1)
     cv2.circle(frame, calib_point, 5, WHITE, -1)    
     return calib_point
 
 
-def coor_key_transform(opt, keypoint, matrix):
-    ref_key_json_path = opt.ref_key_json_path
+def coor_key_transform(keyboard_json, keypoint, matrix):
+    ref_key_json_path = keyboard_json
     keypoint = np.array([keypoint[0], keypoint[1]]).reshape(-1, 1, 2)
     affine_keypoint = cv2.perspectiveTransform(keypoint.astype('float32'), matrix)
     affine_keypoint = affine_keypoint.reshape(-1)
     
-    h_affine, w_affine = 150, 300
-    if affine_keypoint[0] < 0 or affine_keypoint[0] > w_affine or affine_keypoint[1] < 0 or affine_keypoint[1] > h_affine:
+    with open(ref_key_json_path) as f:
+        ref_keyboard = (json.load(f))
+    (x1_ref, y1_ref, x2_ref, y2_ref) = eval(ref_keyboard["keyboard"])    
+    if affine_keypoint[0] < 0 or affine_keypoint[0] > (x2_ref - x1_ref) or affine_keypoint[1] < 0 or affine_keypoint[1] > (y2_ref - y1_ref):
         print("The detection point is not in keyboard.")
     else:
-        with open(ref_key_json_path) as f:
-            ref_keyboard = (json.load(f))
-        (x1_ref, y1_ref, x2_ref, y2_ref) = eval(ref_keyboard["keyboard"])        
-        scale_x = (x2_ref - x1_ref) / 300
-        scale_y = (y2_ref - y1_ref) / 150
-        x_transformed = affine_keypoint[0] * scale_x + x1_ref
-        y_transformed = affine_keypoint[1] * scale_y + y1_ref
+        x_transformed = affine_keypoint[0] * 1 + x1_ref
+        y_transformed = affine_keypoint[1] * 1 + y1_ref
 
         for key, value in ref_keyboard.items():
             if key == "keyboard":
@@ -185,17 +182,17 @@ def coor_key_transform(opt, keypoint, matrix):
 #                     print("***** Press {} *****".format(key))
 #                     break        
 
-def real_finger_calib(opt):
+def real_finger_calib(config):
     capture = cv2.VideoCapture(1)
     while capture.isOpened():
         pressed_key = cv2.waitKey(1)
         _, frame = capture.read()
         # frame = cv2.flip(frame, 1)
         
-        if pressed_key & 0xFF == ord('z'):
+        if pressed_key & 0xFF == ord('w'):
             print("** Finish finger histogram registeration ***")
             hand_hist = hand_histogram(frame)
-            np.save(opt.finger_hist_path, hand_hist)
+            np.save(config['finger_hist_path'], hand_hist)
             break
         else:
             frame = draw_rect(frame)
