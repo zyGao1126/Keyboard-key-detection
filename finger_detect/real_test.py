@@ -132,5 +132,4 @@ def real_test_img(config, image_list):
         test_single_img(fifo, config_refKey, config_finger, config_realKey, config_test, frame)
  
 
-
     
