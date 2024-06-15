@@ -20,14 +20,17 @@ def get_vertex(image, eps, area_threshold):
     contours, _ = cv2.findContours(image, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
     contours = sorted(contours, key=cv2.contourArea, reverse=True)
     for idx, contour in enumerate(contours):
+        area = cv2.contourArea(contour)
+
+        if idx >= 5:
+            return None, None        
+        if area < area_threshold[0] or area > area_threshold[1]:
+            continue
+        
         epsilon = eps * cv2.arcLength(contour, True) 
         approx = cv2.approxPolyDP(contour, epsilon, True)
-        if idx > 5:
-            return None, None
-        elif cv2.contourArea(contour) < area_threshold[0] or cv2.contourArea(contour) > area_threshold[1]:
-            continue   
         if len(approx) == 4:
-            return approx.reshape(4, 2), cv2.contourArea(contour)
+            return approx.reshape(4, 2), area
 
     return None, None
 

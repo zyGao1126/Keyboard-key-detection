@@ -153,7 +153,9 @@ def coor_key_transform(keyboard_json, keypoint, matrix):
             if x_transformed > x1 and y_transformed > y1:
                 if x_transformed < x2 and y_transformed < y2:
                     print("***** Press {} *****".format(key))
-                    break  
+                    return key
+    return None
+
 
 
 # def coor_key_transform(opt, keypoint):
