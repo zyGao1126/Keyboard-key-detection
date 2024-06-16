@@ -4,7 +4,7 @@ import threading
 import cv2
 import json
 import numpy as np
-from finger_detect.finger_calibration import manage_image_opr, coor_key_transform
+from finger_detect.finger_calibration import manage_image_opr, coor_key_transform, hand_histogram
 from kb_detect.ini_calibration import processImage
 from kb_detect.real_calibration import get_contour
 from finger_detect.real_test import matrixChange, isLegalKeyboard
@@ -19,17 +19,21 @@ class KBFrameProcessor:
             cls.instance = KBFrameProcessor()
         return cls.instance
 
+    def reset_reference(self, area=None, matrix=None):
+        self.ref_area = None
+        self.ref_matrix = None
+        self.last_area = area
+        self.last_matrix = matrix
+        self.count = 0
+
     def __init__(self, config_path="./config.yaml"):
         if KBFrameProcessor.instance is not None:
             raise Exception("KBFrameProcessor is a singleleton!")
         self.q = queue.Queue()
-        self.q_result = queue.Queue()
+        # Queue to store results
+        self.result_queue = queue.Queue()  
         # for auto-detect keyboard location
-        self.ref_area = None
-        self.last_area = None
-        self.ref_matrix = None
-        self.last_matrix = None
-        self.count = 0
+        self.reset_reference()
         # for config parameters
         self.cfg_path = config_path
         self.cfg_refKey, self.cfg_finger, self.cfg_realKey, self.cfg_test = self.load_config(self.cfg_path)  
@@ -48,22 +52,22 @@ class KBFrameProcessor:
         return cfg_refKey, cfg_finger, cfg_realKey, cfg_test     
 
     def fifo_update(self, area, matrix):
+        def should_update_count(matrix):
+            return not matrixChange(self.cfg_test, self.last_matrix, matrix) and isLegalKeyboard(area)        
+        
         if area is not None:
             if self.ref_area is None:
                 if self.count < 5:
-                    self.count = self.count + 1 if (not matrixChange(self.cfg_test, self.last_matrix, matrix) and isLegalKeyboard(area)) else 0
+                    self.count = self.count + 1 if should_update_count(matrix) else 0
                 else:
                     self.ref_area = self.last_area 
                     self.ref_matrix = self.last_matrix
                 self.last_area = area
                 self.last_matrix = matrix 
             else:
-                area_th = self.ref_area * 0.05
-                if abs(area - self.ref_area) < area_th and matrixChange(self.cfg_test, self.ref_matrix, matrix):
-                    self.ref_area = self.ref_matrix = None
-                    self.last_area = area
-                    self.last_matrix = matrix 
-                    self.count = 0    
+                area_threshold = self.ref_area * 0.05
+                if abs(area - self.ref_area) < area_threshold and matrixChange(self.cfg_test, self.ref_matrix, matrix):
+                    self.reset_reference(area, matrix)
 
     def run_kbDetect(self, frame, limit_real="./json_file/limit_real.json"):
         with open(limit_real) as f:
@@ -71,10 +75,12 @@ class KBFrameProcessor:
         binary_image = cv2.cvtColor(processImage(ranges, frame), cv2.COLOR_BGR2GRAY)
         _, _, matrix, area = get_contour(self.cfg_realKey, binary_image, frame, self.cfg_refKey.get('ref_key_json_path'))          
         self.fifo_update(area, matrix)
+        if self.ref_matrix is not None:
+            return None
         hand_hist = np.load(self.cfg_finger.get('finger_hist_path'))
         coor = manage_image_opr(frame, hand_hist, self.cfg_test.get('coor_bias'))
         key = None
-        if coor and self.ref_matrix is not None:
+        if coor:
             key = coor_key_transform(self.cfg_refKey.get('ref_key_json_path'), coor, self.ref_matrix)
         # cv2.imshow("Keyboard operator detection", frame)
         return key
@@ -84,14 +90,23 @@ class KBFrameProcessor:
             if not self.q.empty():
                 frame = self.q.get(block=True, timeout=None)
                 result = self.run_kbDetect(frame)
-                self.q_result.put(result)
+                if result is not None:
+                    self.result_queue.put(result)
+
+    def get_finger_hist(self, frame):
+        # TODO: capture a frame and get the finger color range into his
+        hand_hist = hand_histogram(frame)
+        np.save(self.cfg_finger.get('finger_hist_path'), hand_hist)
 
     def put(self, frame):
       self.q.put(frame)
 
-    def get(self):
-        result = self.q_result.get()
-        return result
+    def get_result(self):
+        try:
+            return self.result_queue.get_nowait()
+        except queue.Empty:
+            return None      
+
 
 def main():
     KBprocess = KBFrameProcessor.getInstance()
@@ -102,6 +117,10 @@ def main():
         _, frame = capture.read()
         
         KBprocess.put(frame)
+
+        result = KBprocess.get_result()
+        if result is not None:
+            print("Detected key:", result)        
 
         if pressed_key == 27: #ESC
             break         

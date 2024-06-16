@@ -45,6 +45,7 @@ def matrixChange(config, last_matrix, matrix):
     return False
 
 def isLegalKeyboard(area):
+    # need to adjust based on the real env, here the keyboard area is 99000
     return True if (area > 80000 and area < 120000) else False
 
 def real_test(config):

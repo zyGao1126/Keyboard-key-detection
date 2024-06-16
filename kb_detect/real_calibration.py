@@ -14,8 +14,6 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from kb_detect.util import write_json
 from kb_detect.ini_calibration import onTrackbar, processImage
 
-GREEN = (0,255,0)
-
 def get_vertex(image, eps, area_threshold):
     contours, _ = cv2.findContours(image, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
     contours = sorted(contours, key=cv2.contourArea, reverse=True)
@@ -38,7 +36,7 @@ def get_vertex(image, eps, area_threshold):
 def image_transform(edge_image, image, eps, area_threshold, keybaord_json):
     corners, area = get_vertex(edge_image, eps, area_threshold)    
     if corners is not None:
-        cv2.polylines(image, [corners], isClosed=True, color=GREEN, thickness=2)        
+        cv2.polylines(image, [corners], isClosed=True, color=(0,255,0), thickness=2)    #Green    
         
         s = corners.sum(axis = 1)
         diff = np.diff(corners, axis=1)

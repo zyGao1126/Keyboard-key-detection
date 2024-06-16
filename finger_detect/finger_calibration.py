@@ -12,10 +12,6 @@ hand_rect_one_y = None
 hand_rect_two_x = None
 hand_rect_two_y = None
 
-PURPLE = (255, 0, 255)
-RED    = (0, 0, 255)
-WHITE  = (255, 255, 255)
-
 def hand_histogram(frame):
     global hand_rect_one_x, hand_rect_one_y
 
@@ -100,8 +96,7 @@ def bias_calibration(far_point, cnt_centroid, far_dist, bias=15):
     bias_y = np.floor(bias * dy / far_dist) if dy > 0 else np.ceil(bias * dy / far_dist) 
     if far_point[0] > bias_x and far_point[1] > bias_y:
         return tuple((np.uint32(far_point[0] - bias_x), np.uint32(far_point[1] - bias_y)))
-    else: 
-        return None
+    return None
 
 def manage_image_opr(frame, hand_hist, bias):
     hist_mask_image = hist_masking(frame, hand_hist)
@@ -116,7 +111,8 @@ def manage_image_opr(frame, hand_hist, bias):
     max_cont = max(contour_list, key=cv2.contourArea)
 
     cnt_centroid = centroid(max_cont)
-    cv2.circle(frame, cnt_centroid, 5, PURPLE, -1)
+    if cnt_centroid is not None:
+        cv2.circle(frame, cnt_centroid, 5, (255, 0, 255), -1) # purpse
 
     hull = cv2.convexHull(max_cont, returnPoints=False)
     defects = cv2.convexityDefects(max_cont, hull)
@@ -125,9 +121,9 @@ def manage_image_opr(frame, hand_hist, bias):
         return None
     calib_point = bias_calibration(far_point, cnt_centroid, far_dist, bias)
     # print("Centroid : " + str(cnt_centroid) + ", farthest Point : " + str(far_point) + "calib point : " + str(calib_point))
-    cv2.circle(frame, far_point, 5, RED, -1)
+    cv2.circle(frame, far_point, 5, (0, 0, 255), -1) # ref
     if calib_point is not None:
-        cv2.circle(frame, calib_point, 5, WHITE, -1)    
+        cv2.circle(frame, calib_point, 5, (255, 255, 255), -1)  # white
     return calib_point
 
 
