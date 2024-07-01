@@ -60,14 +60,14 @@ def edge_detect(image, threshold):
     return edged
 
 
-def get_contour(config, binary_image, image, keybaord_json):
+def get_contour(config, binary_image, image, keyboard_json):
     gray_ori_image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     enh_image = morpholo_process(cv2.bitwise_not(binary_image), config['erode_kernel'])    
     # enh_image = cv2.bitwise_not(binary_image)
     
     edge_image = edge_detect(gray_ori_image, config['canny_threshold'])
     diff_image = edge_image - enh_image
-    warped_image, matrix, area = image_transform(diff_image, image, config['epsilon'], config['contour_area'], keybaord_json)
+    warped_image, matrix, area = image_transform(diff_image, image, config['epsilon'], config['contour_area'], keyboard_json)
     return diff_image, warped_image, matrix, area
 
 
@@ -77,7 +77,7 @@ def morpholo_process(image, kernel):
     return eroded_image
 
 
-def real_keyboard_calib(config, keybaord_json):    
+def real_keyboard_calib(config, keyboard_json):    
     ori_img_window = 'original_img'
     binary_img_window = 'binary_img'
     calibrate_img_window = 'calibrate_img'
@@ -105,7 +105,7 @@ def real_keyboard_calib(config, keybaord_json):
         # image = cv2.flip(image, 1)
 
         binary_image = cv2.cvtColor(processImage(ranges, image), cv2.COLOR_BGR2GRAY)  
-        edge_image, warped_image, _, _ = get_contour(config, binary_image, image, keybaord_json)
+        edge_image, warped_image, _, _ = get_contour(config, binary_image, image, keyboard_json)
 
         cv2.imshow(ori_img_window, image)
         cv2.imshow(binary_img_window, binary_image)      

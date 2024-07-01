@@ -3,6 +3,7 @@ from collections import deque
 import cv2
 import json
 import sys
+import math
 import os
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -36,11 +37,12 @@ fifo = myQueue()
 def matrixChange(config, last_matrix, matrix):
     if last_matrix is None:
         return False
-    diff_sita = np.abs(np.arccos(np.clip(last_matrix[0][0], -1, 1)) - np.arccos(np.clip(matrix[0][0], -1, 1)))
+    diff_sita = np.abs(np.arctan2(last_matrix[1][0], last_matrix[0][0]) - np.arctan2(matrix[1][0], matrix[0][0]))
+    diff_sita_angles = math.degrees(diff_sita) 
     diff_x = np.abs(last_matrix[0][2] - matrix[0][2])
     diff_y = np.abs(last_matrix[1][2] - matrix[1][2])
     # print("diff_sita: {}  diff_x: {}  diff_y: {}".format(diff_sita, diff_x, diff_y))
-    if diff_sita >= config['sita_threshold'] or diff_x >= config['coor_threshold'] or diff_y >= config['coor_threshold']:
+    if diff_sita_angles >= config['sita_threshold'] or diff_x >= config['coor_threshold'] or diff_y >= config['coor_threshold']:
         return True
     return False
 

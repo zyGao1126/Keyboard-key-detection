@@ -1,6 +1,6 @@
 
 refKeyCalib:
-  ref_key_json_path: "./json_file/keyboard1_ref.json"
+  ref_key_json_path: "./json_file/keyboard1_bj.json"
   ref_img_path: "./iniImage/keyboard1_ref.jpg"
   th_key_area: 180
 
@@ -14,6 +14,6 @@ realKeyCalib:
   contour_area: [5000, 120000]
   
 realTest:
-  sita_threshold: 2
-  coor_threshold: 10
-  coor_bias: 15
+  real_area_threshold: 0.02
+  sita_threshold: 5
+  coor_threshold: 20

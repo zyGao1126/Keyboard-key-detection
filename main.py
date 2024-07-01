@@ -4,7 +4,7 @@ import threading
 import cv2
 import json
 import numpy as np
-from finger_detect.finger_calibration import manage_image_opr, coor_key_transform, hand_histogram
+from finger_detect.finger_calibration import manage_image_opr, coor_key_transform, whole_image_histogram
 from kb_detect.ini_calibration import processImage
 from kb_detect.real_calibration import get_contour
 from finger_detect.real_test import matrixChange, isLegalKeyboard
@@ -57,7 +57,7 @@ class KBFrameProcessor:
         
         if area is not None:
             if self.ref_area is None:
-                if self.count < 5:
+                if self.count < 3:
                     self.count = self.count + 1 if should_update_count(matrix) else 0
                 else:
                     self.ref_area = self.last_area 
@@ -75,15 +75,15 @@ class KBFrameProcessor:
         binary_image = cv2.cvtColor(processImage(ranges, frame), cv2.COLOR_BGR2GRAY)
         _, _, matrix, area = get_contour(self.cfg_realKey, binary_image, frame, self.cfg_refKey.get('ref_key_json_path'))          
         self.fifo_update(area, matrix)
-        if self.ref_matrix is not None:
+        if self.ref_matrix is None:
             return None
         hand_hist = np.load(self.cfg_finger.get('finger_hist_path'))
-        coor = manage_image_opr(frame, hand_hist, self.cfg_test.get('coor_bias'))
-        key = None
-        if coor:
-            key = coor_key_transform(self.cfg_refKey.get('ref_key_json_path'), coor, self.ref_matrix)
-        # cv2.imshow("Keyboard operator detection", frame)
-        return key
+        sorted_points = manage_image_opr(frame, hand_hist, self.cfg_test.get('real_area_threshold'))
+
+        if sorted_points is not None and len(sorted_points) > 0:
+            sorted_coors = [point for point, _ in sorted_points]
+            return coor_key_transform(self.cfg_refKey.get('ref_key_json_path'), sorted_coors, self.ref_matrix)
+        return None
 
     def _reader(self):
         while True:
@@ -94,8 +94,8 @@ class KBFrameProcessor:
                     self.result_queue.put(result)
 
     def get_finger_hist(self, frame):
-        # TODO: capture a frame and get the finger color range into his
-        hand_hist = hand_histogram(frame)
+        # TODO: capture a frame and get the finger color range
+        hand_hist = whole_image_histogram(frame)
         np.save(self.cfg_finger.get('finger_hist_path'), hand_hist)
 
     def put(self, frame):
@@ -112,12 +112,13 @@ def main():
     KBprocess = KBFrameProcessor.getInstance()
 
     capture = cv2.VideoCapture(1) 
+    print("START DETECT")
     while capture.isOpened():
         pressed_key = cv2.waitKey(1)
         _, frame = capture.read()
         
         KBprocess.put(frame)
-
+                
         result = KBprocess.get_result()
         if result is not None:
             print("Detected key:", result)        
